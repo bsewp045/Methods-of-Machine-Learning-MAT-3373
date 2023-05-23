@@ -1,0 +1,657 @@
+---
+title: "long_hw1"
+author: "Bhavika Sewpal - 300089940"
+output:
+  
+  html_document:
+    df_print: paged
+  pdf_document:
+      latex_engine: xelatex
+---
+
+```{r opts, echo = FALSE}
+knitr::opts_chunk$set(
+  fig.path = "images/"
+)
+```
+
+**1. Introduction to Data Exploration**/
+
+a)\
+```{r}
+setwd("C:/Users/mahim/Desktop/winter2021/MAT3373/long_hw_1")
+college <- read.csv("College.csv")
+```
+
+b)\
+```{r}
+rownames(college) <- college[,1]
+college = college[,-1]
+fix(college)
+```
+
+c) 1)\
+```{r}
+summary(college)
+```
+
+2)/
+```{r}
+pairs(college[,2:11],pch=20)
+```
+
+3)\
+```{r}
+boxplot(Outstate~Private, data=college)
+```
+
+4)\
+```{r}
+Elite = rep("No", nrow(college))
+Elite[college$Top10perc > 50] = "Yes"
+Elite = as.factor(Elite)
+college = data.frame(college, Elite)
+summary(college)
+boxplot(Outstate~Elite, data=college)
+```
+
+5)\
+```{r}
+par(mfrow=c(2,2))
+hist(college$Enroll,xlab="Enroll", main="Number of new students enrolled", breaks = 7)
+hist(college$F.Undergrad,xlab="Full time undergraduates", main="Number of full time undergraduate students", breaks = 6)
+hist(college$P.Undergrad,xlab="Part time undergraduates", main="Number of part time undergraduate students", breaks = 4)
+hist(college$Grad.Rate,xlab="Graduation Rate",main="Graduation Rate",breaks = 9)
+
+```
+\
+6)
+```{r}
+names(college)
+qqnorm(college$Grad.Rate)
+
+```
+\
+It seems that the graduation rate follows a more or less Gaussian distribution, as demonstrated by the QQ-plot.\
+
+```{r}
+library(corrplot)
+corr <- cor(college[,2:18])
+corrplot(corr,method="circle",number.digits=2,type="upper")
+```
+\
+Some of the variables of the college dataset are highly correlated, while some are not, as illustrated by the correlation matrix.
+
+\
+**2.Empirical Study: KNN for MNIST Data**
+
+```{r}
+library(class)
+MNIST_train <- read.csv("mnist_train.csv")
+MNIST_test <- read.csv("mnist_test.csv")
+#Normalise function
+normalize <- function(x){
+  if (max(x) - min(x) == 0){
+    return (x)
+  }else{
+    return ((x-min(x))/(max(x) - min(x)))
+  }
+  
+}
+#Normalise the predictors of the train dataset
+train_n <- as.data.frame(lapply(MNIST_train[,3:ncol(MNIST_train)],normalize))
+train_target <- as.factor(MNIST_train[, 2])
+#Normalise the predictors of the test dataset
+test_n <- as.data.frame(lapply(MNIST_test[,2:ncol(MNIST_test)], normalize))
+test_target <- as.factor(MNIST_test[,1])
+
+```
+\
+KNN classifier with k = 3\
+```{r}
+
+
+k3 <- knn(train_n, test_n, train_target, k=3)
+table(test_target, k3)
+mean(k3==test_target)
+
+```
+Accuracy = `r mean(k3==test_target)` \
+
+KNN classifier with k = 4\
+
+```{r}
+k4 <- knn(train_n, test_n, train_target, k=4)
+table(test_target, k4)
+mean(k4==test_target)
+```
+Accuracy = `r mean(k4==test_target)` \
+
+KNN Classifier with k = 5\
+```{r}
+k5 <- knn(train_n, test_n, train_target, k=5)
+table(test_target, k5)
+mean(k5==test_target)
+
+```
+Accuracy = `r mean(k5==test_target)` \
+
+KNN Classifier with k=6 \
+```{r}
+k6 <- knn(train_n, test_n, train_target, k=6)
+table(test_target, k6)
+mean(k6==test_target)
+```
+Accuracy = `r mean(k6==test_target)` \
+
+As the value of k increases from 3 to 6, it appears that the accuracy of the KNN classifier decreases. (As we include more neighbours, the classifier appears to lose the ability to capture the nuances of the decision boundary).\
+
+When k = 3, the classifier makes the highest rate of good predictions.\
+
+If we were to test the classifier (with k=3) on a different test data, we would get a different test error. When the number of neighbours is relatively low, the model has low bias (as it is only using the closest points) but has high variance.\
+As a result, we would expect the test error to vary among different samples. It would be lower or higher, depending on the distribution of the points in each sample.\
+
+**3. short Conceptual Questions**
+
+X1 = GPA\
+X2 = IQ\
+X3 = GENDER\
+X4 = GPA * IQ\
+X5 = GPA * GENDER\
+
+
+For male:\
+${Y_i} = 50 + 20X1 + 0.07X2 + 0.01X4$ \
+
+For female:\
+${Y_i} = 85 + 10X1 + 0.07X2 + 0.01X4$
+
+a)1)\ 
+Answer : Incorrect\
+For a fixed value of IQ(X2) and GPA(X1), males earn more than females if $10X1 - 35 > 0$.\
+With GPAs greater than 3.5, males will earn higher than females. But for averages GPAs, it seems that males earn less than females.Thus, on average, males earn less than females\
+
+2)\
+Answer : Correct\
+For a fixed value of IQ(X2) and GPA(X1), females earn more than males if 
+$ 35 - 10X1 > 0$.\
+With the exception of high GPAs, females will earn higher than males.\
+
+3)\
+Answer : Correct\
+With GPAs greater than 3.5, males will earn higher than females.\
+
+4)\
+Answer : Incorrect\
+With GPAs greater than 3.5, females will earn less than males.\
+
+b)\
+Y = 85 + 10(4.0) + 0.07(110) + 0.01 (4.0 * 110) = 137.1 \
+
+c)\
+The magnitude of a coefficient for a term says nothing about its significance in a model. We have to check if the p-value for that term is < 0.05 in the multiple linear regression model to conclude that it is significant.
+
+
+2)\
+
+I would choose X(1) as the X values are quite spread out(from -12 to 12) and are spread out in a fairly uniform way, with a reasonable amount of points.\
+X(2) has a lot of points but the range of the x values is very small (from -1 to 1)\
+X(3) has a wide range but the number of points is too small.\
+
+3)\
+With a linear regression model, ${\hat{f}}$ will be estimated with a line. If the line spans all of R (i.e we do not place any restrictions on the domain of ${\hat{f}}$ ), we will never have a maximum value for ${\hat{f}}$ (as a line has no maximum or minimum point).\
+
+**4. Lying with Regression**\
+
+1)\
+To estimate a line with a negative slope, we'll sample x_values around $\pi$ (3.14). \
+
+
+```{r}
+set.seed(20)
+x_values <- round(runif(100,2.9,3.5), digits=3)
+y <- sin(x_values)
+fit <- lm(y~x_values)
+summary(fit)
+x_values
+confint(fit,level=0.99)
+```
+
+2)\
+To estimate a line with a positive slope, we sample x_values around 0.
+```{r}
+set.seed(20)
+x_values <- round(runif(100,-0.2,0.2), digits=3)
+y <- sin(x_values)
+fit <- lm(y~x_values)
+summary(fit)
+x_values
+confint(fit,level=0.99)
+
+```
+
+3)\
+let f(x) = sin x\
+By using linear regression, $f(x) \approx f(x_0) + f'(x_0)(x - x_0)$ \
+At x = 0,$f(x) \approx f(0) + f'(0)(x - 0)$ \
+$f(x) \approx sin0 + cos0(x - 0)$\
+$f(x) \approx 0 + 1*(x )$\
+$f(x) \approx x$ \
+Conclusion: Near values of x around 0, $sin(x) \approx x$.\
+Thus, we would expect the slope of the regression line around x=0 to be 1.
+It is impossible in this case to have the slope of the line in the confidence interval [100, infinity).\
+ 
+ 
+ **5. SIMULATION STUDY: POST-SELECTION INFERENCE**\
+ 1)a)\
+```{r}
+
+m=80
+n=100
+set.seed(20)
+Pred = matrix(rnorm(m*n,0,1),nrow=n,ncol=m)
+Resp = rnorm(n,0,1)
+#Correlation function
+correlation <- function(mat,resp){
+  corr_values <- vector(mode="double",ncol(mat))
+  for(i in seq_len(ncol(mat))){
+    corr <- cor(mat[,i],resp)
+    corr_values[i] <- corr
+  }
+  corr_values
+}
+list_correlation <- correlation(Pred,Resp)
+abs_corr <- abs(list_correlation)
+#Find the highest correlation and its index
+max_value1 <- max(abs_corr)
+max_value1_index <- which.max(abs_corr)
+#Find the second highest correlation and its index
+abs_corr <- abs_corr[-max_value1_index]
+max_value2 <- max(abs_corr)
+max_value2_index <- match(max_value2, abs(list_correlation))
+i1 = max_value1_index
+i2 = max_value2_index
+i1;i2
+max_value1;max_value2
+```
+b)\
+```{r}
+#Multiple linear regression
+cor_between_predictors1 <- cor(Pred[,i1],Pred[,i2])
+cor_between_predictors1
+fit2 <- lm(Resp ~ Pred[,i1] + Pred[,i2])
+summary(fit2)
+confint(fit2, level=0.95)
+```
+
+\
+Both predictors are significant in the model (with p-values < 0.05).\
+Overall, the model also has a small p-value.\
+As for the confidence intervals for both predictors, none of them include 0, showing their significance in the model.\
+However, the lower bound of the confidence interval for the 23rd predictor is quite close to 0.\
+
+
+2)a)\
+```{r}
+set.seed(20)
+train_index <- sample(1:100,50)
+Pred_train <- Pred[train_index,]
+Pred_test <- Pred[-train_index,]
+Resp_train <- Resp[train_index]
+Resp_test <- Resp[-train_index]
+
+corr_train <- correlation(Pred_train,Resp_train)
+abs_corr_train <- abs(corr_train)
+max1 <- max(abs_corr_train)
+index1 <- which.max(abs_corr_train)
+abs_corr_train <- abs_corr_train[-index1]
+max2 <- max(abs_corr_train)
+index2 <- match(max2, abs(corr_train))
+i1 = index1
+i2 = index2
+i1;i2
+max1;max2
+cor_between_predictors2 <- cor(Pred_train[,i1], Pred_train[,i2])
+cor_between_predictors2
+
+
+fit_test<- lm(Resp_test~Pred_test[,i1] + Pred_test[,i2])
+summary(fit_test)
+confint(fit_test,level=0.95)
+```
+
+b)\
+
+This time, none of the predictors are significant and the model, overall, is not significant either.\
+The confidence intervals for both predictors contain 0.
+When all the 100 observations were used, we found two predictors which had very little correlation between themselves : `r cor_between_predictors1` but when we used only 50 observations, the two predictors found had not only a much higher correlation with the response, but also between themselves: `r cor_between_predictors2`.\
+The increased collinearity between these two predictors reduce the statistical significance of the model.\
+
+**7. EMPIRICAL STUDY: Bayes Rate of Classifiers**\
+
+1)\
+```{r}
+hw <- read.csv("weight-height.csv")
+set.seed(20)
+hw$Gender <- as.factor(hw$Gender)
+train_male_index<- sample(c(1:5000),2500)
+train_female_index <- sample(c(5001:10000),2500)
+to_remove <- c(train_male_index, train_female_index)
+train <- rbind(hw[train_male_index, ], hw[train_female_index,])
+test <- hw[-to_remove,]
+train_avg_h = mean(train[,2])
+train_avg_w = mean(train[,3])
+train_var_h = var(train[,2])
+train_var_w = var(train[,3])
+test_avg_h = mean(test[,2])
+test_avg_w = mean(test[,3])
+test_var_h = var(test[,2])
+test_var_w = var(test[,3])
+train_avg_h;train_avg_w;train_var_h;train_var_w;test_avg_h;test_avg_w;test_var_h;test_var_w
+```
+
+2)\
+```{r}
+library(e1071) 
+library(caTools) 
+library(caret)
+library(naivebayes)
+set.seed(20)
+train_matrix <- data.matrix(train)
+test_matrix <- data.matrix(test)
+y <- c(train_matrix[,1])
+y <- as.factor(y)
+classifier <- gaussian_naive_bayes(train_matrix[,2:3],y)
+summary(classifier)
+
+y_pred <- predict(classifier, newdata=test_matrix[,2:3])
+cm <- table(y,y_pred)
+cm
+mean(y==y_pred)
+corr <- cor(train[,2],train[,3])
+```
+\
+The model is 89% accurate.\
+When using the Naive Bayes classifier, we assume that the predictors are independent, and thus have a correlation of about 0. \
+But weight and height have a rather high correlation : `r corr`.\
+In this case, this is the best we can do.
+
+Most of the errors occur near the decision boundary
+
+```{r}
+
+
+library(ggplot2)
+
+y_pred2 <- c(train_matrix[,1])
+for(i in seq_len(5000)){
+  if(y_pred[i] != y[i] & y_pred[i] == 2){# incorrectly predicted male
+    y_pred2[i] <- 3
+  }
+  if(y_pred[i] != y[i] & y_pred[i] == 1){#incorrectly predicted femlae
+    y_pred2[i] <- 4
+  }
+}
+y_pred2 <- as.factor(y_pred2)
+
+
+graph <- ggplot(test, aes(x=Weight, y=Height, color=y_pred2)) + geom_point() + scale_color_discrete(name="Classification",breaks=c("1","2","3","4"), labels = c("F", "M", "Not M", "Not F")) 
+
+graph
+
+```
+
+
+
+
+```{r}
+prob <- predict(classifier,newdata=test_matrix[,2:3],type="prob")
+
+erreur <- 0.0000
+
+for(i in seq_len(5000)){
+  erreur <- erreur + min(prob[i,])
+}
+bayes_error <- erreur/5000
+bayes_error
+
+plot(classifier)
+
+
+```
+\
+The naives bayes classifier will tend to classify a height greater than 66 as Male and a height smaller than 66 as female.\
+It will also tend to classify a weight greater than 160 as Male and a weight smaller than 160 as female.\
+Since there is a much wider overlap in the height densities than in the weight densities, more errors will be due to a misclassification of height.\
+
+**8. Data Analysis : House Sizes and Collinearity**\
+1)\
+```{r}
+house = read.csv("House_Data.csv")
+head(house)
+Ai = house$LotArea
+Fi = house$X1stFlrSF
+Si = house$X2ndFlrSF
+plot(Fi,Si) 
+```
+There seems to be a linear relationship between F and S. There is a high-leverage point at F=1800 \
+
+2)\
+```{r}
+fitm1 = lm(Ai~Fi+Si)
+fitm2 = lm(Ai~Fi)
+fitm3 = lm(Ai~Si)
+summary(fitm1)
+confint(fitm1,level=0.95)
+summary(fitm2)
+confint(fitm2,level=0.95)
+summary(fitm3)
+confint(fitm3,level=0.95)
+
+corrFS <- cor(Fi,Si)
+corrFS
+
+```
+3)\
+For model 1, the p-values for $\beta_1$ and and $\beta_2$ are greater than 0.05 (i.e. they are not significant).\
+However, the p-value for the model is less than 0.05, which means that the model is significant but its predictors are not.\
+
+The p-values for both model 2 and model 3 are less than 0.05, meaning that the predictors are statistically significant.\
+
+This discrepancy is due to the fact that F and S are strongly correlated : 0.944 and with a variance inflation factor of about 36.
+Alone, F and S are statistically significant in the models but when used together, the contribution of each one of them to the model decreases, causing the p-values of the predictors to inflate.
+
+
+4)\
+We can add an interaction term of F*S as these two are strongly correlated.
+```{r}
+fitm4 = lm(Ai~Fi + Si + Fi*Si)
+summary(fitm4)
+confint(fitm4,level=0.95)
+```
+\When the interaction term is added, the p-values of S and F decreases substantially and they become significant in the model
+
+**9. Simulation Study - Bootstrap**\
+
+1)\
+```{r}
+
+#The bootstrap function for the normal dist
+bs.norm.func <- function(original,number){
+  output <- vector(mode="double", number)
+  for(i in seq_len(number)){
+    #we sample from a the original dataset repeatedly
+    b.ind <- sample(1:100,100,replace=TRUE)
+    b.sam <- original[b.ind]
+    #calculate the mean of each sample
+    output[i] <- mean(b.sam)
+  }
+  output
+}
+
+
+
+#Function to estimate the value of theta from different samples
+norm.func <- function(number){
+  output <- vector(mode="double", number)
+  for(i in seq_len(number)){
+    sample <- rnorm(100,0,1)
+    output[i] <- mean(sample)
+  }
+  output
+}
+
+
+set.seed(20)
+norm_sample <- rnorm(100,0,1) # an initial sample for the bootstrap function
+
+Fboot <- bs.norm.func(norm_sample,200)
+density(Fboot)
+plot(density(Fboot),xlim=c(-0.5,0.5))
+
+F <- norm.func(200)
+density(F)
+plot(density(F),xlim=c(-0.5,0.5))
+
+```
+
+\
+They look fairly similar but the plot of the density of F is narrower while that of F_boot is wider at the top.
+
+2)\
+$f_0 = \frac{1}{\theta}$ \
+L= Likelihood function \
+L = $\prod_{i=1}^{n} f(i) $ \
+L = $\prod_{i=1}^{n} \frac{1}{\theta}$ \
+L = $\frac{1}{\theta^n}$ \
+log L = $ -nlog\theta$ \
+$\frac{\partial f}{\partial \theta} = -n/\theta$ \
+To maximize $\frac{\partial f}{\partial \theta}$, we need to maximise the denominator as -n is negative. We can maximise the denominator by putting $\theta = max(X_1,X_2,...,X_n)$.
+
+
+3)\
+```{r}
+unif.func <- function(number){
+  output <- vector(mode="double",number)
+  for(i in seq_len(number)){
+    sample <- runif(100,0,1)
+    output[i] <- max(sample)
+  }
+  output
+}
+
+bs.unif.func <- function(original,number){
+  output <- vector(mode="double", number)
+  for(i in seq_len(number)){
+    b.ind <- sample(1:100,100,replace=TRUE)
+    b.sam <- original[b.ind]
+    output[i] <- max(b.sam)
+  }
+  output
+}
+F_unif <- unif.func(500)
+theta_F = max(F_unif)
+theta_F
+density(F_unif)
+plot(density(F_unif),xlim=c(0.975,1.02))
+
+set.seed(20)
+data <- runif(100,0,1)
+F_boot_unif <- bs.unif.func(data,500)
+theta_F_boot = max(F_boot_unif)
+theta_F
+density(F_boot_unif)
+plot(density(F_boot_unif),xlim=c(0.975,1.02))
+
+```
+
+\
+This time, the results differ. Though, the graphs have their maxima at different places, the maximum for F is at `r theta_F` while that for F_boot is at `r theta_F_boot`.\
+
+For values in the interval [0.998,1], F_boot gives a really poor estimate of $\theta$ (a very small value).\
+
+If we used F_boot as a surrogate for F, we would be estimating $\theta$ to be around 0.992. If we then sampled a uniform distribution in the interval [0,1], the sample would not contain any values in the interval [0.992,1]. This will introduce errors in our calculations.\
+
+**10. Logistic Regression**\
+a)
+```{r}
+
+require(ISLR)
+names(Weekly)
+summary(Weekly)
+plot(Weekly)
+qqnorm(Weekly$Lag1)
+plot(density(Weekly$Lag1))
+qqnorm(Weekly$Lag2)
+plot(density(Weekly$Lag2))
+qqnorm(Weekly$Lag3)
+plot(density(Weekly$Lag3))
+qqnorm(Weekly$Lag4)
+plot(density(Weekly$Lag4))
+qqnorm(Weekly$Lag5)
+plot(density(Weekly$Lag5))
+qqnorm(Weekly$Today)
+plot(density(Weekly$Today))
+qqnorm(Weekly$Volume)
+plot(density(Weekly$Volume))
+hist(Weekly$Year)
+plot(density(Weekly$Year))
+corr <- cor(Weekly[,1:8])
+corrplot(corr,method="circle",number.digits=2,type="upper")
+```
+\
+Observation :\
+It seems that only Year and Volume are positively correlated.\
+Lag1, Lag2, Lag3, Lag4, Lag5 and Today seem to have Gaussian distributions.\
+Lag1, Lag2, Lag3, Lag4, Lag5 and Today have the same range of values.\
+
+b)\
+
+```{r}
+
+
+glm.fit <- glm(Direction~Lag1+Lag2+Lag3+Lag4+Lag5+Volume,data=Weekly,family=binomial)
+summary(glm.fit)
+glm.prob <- predict(glm.fit, type="response")
+glm.predict <- ifelse(glm.prob >0.5,"Up","Down")
+
+```
+c)\
+Only Lag2 appears statistically significant with a p-value around 0.03.\
+
+```{r}
+attach(Weekly)
+table(glm.predict,Direction)
+mean(glm.predict==Direction)
+```
+d)\
+The logistic regression model is 56% accurate.\
+About half of the time, the logistic regression model is misclassifying.\
+
+```{r}
+
+train <- Year >= 1990 & Year <= 2008
+glm.fit2 <- glm(Direction~Lag2,data=Weekly,family=binomial,subset=train)
+summary(glm.fit2)
+glm.prob2 <- predict(glm.fit2,newdata = Weekly[!train,],type="response")
+glm.predict2 <- ifelse(glm.prob2>0.5,"Up","Down")
+table(glm.predict2,Direction[!train])
+mean(glm.predict2==Direction[!train])
+```
+\
+Now, about 63% of the predictions are correct/
+
+```{r}
+library(MASS)
+lda.fit <- lda(Direction~Lag2,data=Weekly,subset=(Year>=1990&Year<=2008))
+lda.fit
+lda.pred=predict(lda.fit, Weekly[(Year==2009 | Year==2010), ])
+class(lda.pred)
+target <- Weekly[(Year==2009 | Year==2010), ]
+table(lda.pred$class,target$Direction)
+mean(lda.pred$class==target$Direction)
+
+
+```
+\
+Again, about 63% of the predictions are accurate.

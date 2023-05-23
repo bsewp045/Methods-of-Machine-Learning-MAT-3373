@@ -1,0 +1,37 @@
+---
+title: "MAT 3373: Short HW2"
+output:
+  html_document: default
+  pdf_document: default
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+
+  
+1. Do Question 7.11 from the textbook. **Note:** If you like, you need only do the last part. You can view parts a-f as merely suggestions on *how* to do the last part.
+
+  
+2. This question is about fitting the SVM classifier described in Equations (9.12-9.15) of the textbook, using 2-fold cross-validation. Sketch a large dataset in $\mathbb{R}^{2}$, along with a generic-looking split into testing and training parts, that satisfy the following:
+  - Any classifier that is *linear* in the two-dimensional observations will have very large training and testing error (e.g. more than 15 percent misclassified).
+  - You can add a (small number of) *nonlinear* feature(s) so that the associated SVM classifier that has 0 training error. 
+  - When you use the nonlinear features described in the previous part of the question and do cross-validation, the tuning parameter $C$ that is chosen will be $>10$ *and furthermore* the training error will be $>0$, despite the fact that a 0-error split is possible.
+  
+Give a short informal explanation of why this dataset will have all these properties, and write down the function used in the nonlinear classifier. 
+
+**Note:** When I say that a split should be "generic," I'm really telling you: don't try to avoid the question by drawing testing and training sets that have a lot of structure/patterns (e.g. the training set is all the points on the left-hand-side of the picture, the testing set is all the points on the right-hand-side). If you would like a more formal description, here is a notion that people often use: the explanation you give should be "generic" in the sense that it applies to at least 75 percent of all possible test/train splits.
+  
+3. In class, we considered fitting the Gaussian mixture model (GMM) $Y_{i} \sim \mathrm{Unif}(\{0,1\})$, $X_{i} | Y_{i} \sim N(\mu_{Y_{i}}, \sigma_{Y_{i}}^{2})$ (**Note:** yes, the $X_{i}$'s are one-dimensional). We saw that, when $\sigma_{0},\sigma_{1}$ are assumed known, we could estimate $Y_{1},\ldots,Y_{n}$ and $\mu_{0},\mu_{1}$ using an algorithm that was nearly identical to the k-means algorithm. 
+  + Like the k-means algorithm, the algorithm for fitting the GMM does not always converge to the global optimum - it can get "stuck" at a local optimum. Sketch a dataset and an estimate that is stuck at a local optimum.
+  + Sketch a dataset for which there are two obvious clusters, but where $2$-means will not give the right answer. Sketch the solution given by 2-means, describe an algorithm that *will* give something quite close to the right answer, and sketch this algorithm's decision boundary. **Note:** depending on the particular algorithm chosen, it might be easier to make this last sketch in several pieces. That is fine.
+
+
+4. Do problem 10.4 from the textbook.
+
+5. You generate $n=100000$ data points $(x_{i},y_{i})$ as follows: $x_{i} = \frac{i}{n}$, $y_{i} = N(0,1)$ (so that $y_{i}$ is actually independent of $x_{i}$). You are considering the following modelling strategy: you will fit the data to the $k$-nearest-neighbour model for various values of $k \in \{1,2,\ldots,n-1\}$, and will to choose the correct value of $k$ via cross-validation. In this questionm we'll look at what happens in this ``uninformative" regime.
+
+  - Computed the expected mean-squared *training* error for these models, for all values of $k$. **Note:** yes, this means that there will be a nice formula.
+  - Compute the expected mean-squared leave-one-out cross-validation (LOOCV) error of these models, for all values of $k$.
+  - The *variance* of the mean-squared LOOCV error is on the order of $\frac{1}{n}$, so that the standard deviation is on the order of $\frac{1}{\sqrt{n}}$. Based on this information and the answers to the previous questions, which value of $k$ *would you like* to be chosen by this procedure? Which values of $k$ are *plausible* results of this procedure? **Note:** The data is not deterministic, so you may not get your desired result!

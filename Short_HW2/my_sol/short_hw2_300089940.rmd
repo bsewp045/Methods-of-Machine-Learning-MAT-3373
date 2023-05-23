@@ -1,0 +1,157 @@
+---
+title: "Short Homework 2"
+author: "Bhavika Sewpal - 300089940"
+date: "4/15/2021"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+\
+**Question 1**
+```{r}
+set.seed(100)
+X1 = rnorm(100,sd=2)
+X2 = rnorm(100,sd=2)
+epsilon = rnorm(100,sd=1)
+Y = 1.8 + 0.6 * X1 + 1.2 * X2 + epsilon
+
+#Choose beta_1 = 0.6 
+a = Y - 0.6 * X1
+fit1 = lm(a~X2)
+fit1$coefficients[2]
+
+#choose beta_2
+a = Y = 1.2 * X2
+fit2 = lm(a~X1)
+fit2$coefficients[2]
+
+beta_0 = rep(0,1000)
+beta_1 = rep(0,1000)
+beta_2 = rep(0,1000)
+
+#set the first value of beta_1 to 5
+beta_1[1] = 5
+
+for (i in 1:1000){
+  a = Y - beta_1[i] * X1
+  beta_2[i] = lm(a~X2)$coefficients[2]
+  a = Y - beta_2[i] * X2
+  fit = lm(a~X1)
+  if(i < 1000){
+    beta_1[i+1] = fit$coefficients[2]
+  }
+  beta_0[i] = fit$coefficients[1]
+}
+plot(1:1000,beta_0,type="l",xlab="Iterations",ylab="betas",col="red",ylim=c(-0.02,2))
+lines(1:1000,beta_1,col="blue")
+lines(1:1000,beta_2,col="green")
+legend("center",c("beta_0", "beta_1", "beta_2"), lty = 1, col = c("red", "blue", 
+    "green"))
+```
+\
+**Note**:\
+The lines for $\beta_0$ and $\beta_1$ overlap. 
+
+
+```{r}
+fit2 = lm(Y ~ X1 + X2)
+plot(1:1000, beta_0, type = "l", xlab = "Iterations", ylab = "betas", ylim = c(-0.02, 
+    2), col = "red")
+lines(1:1000, beta_1, col = "blue")
+lines(1:1000, beta_2, col = "green")
+abline(h = fit2$coef[1], lty = "dashed", lwd = 3)
+abline(h = fit2$coef[2], lty = "dashed", lwd = 3)
+abline(h = fit2$coef[3], lty = "dashed", lwd = 3)
+legend("center", c("beta0", "beta1", "beta2", "mlr"), lty = c(1, 
+    1, 1, 2), col = c("red", "blue", "green", "black"))
+
+
+```
+\
+The multiple regression coefficients match the backfitting coefficients, as illustrated in the above diagram.\
+In this case, 1 backfitting iteration was sufficient to obtain the same results as in multiple regression.\
+**Question2**\
+
+```{r}
+#Creating dataset
+
+set.seed(200)
+x1 <- rnorm(1000, 0, 1)          
+y1 <- 5*x1^2 + runif(1000, 1,1.2) 
+
+x2<- rnorm(1000, 0, 1)          
+y2 <- 5*x2^2 + runif(1000, 20, 20.2) 
+
+x <- c(x1,x2,y1,y2)
+x <- matrix(x,ncol=2)
+y <- c(rep(1,1000),rep(2,1000))
+plot(x,col=y)
+
+y <- c(rep(1,1000),rep(2,1000))
+df_x <- data.frame(c(x1,x2),c(y1,y2))
+df <- data.frame(x=df_x,y=y)
+df[,3] <- factor(df[,3])
+plot(df[,1],df[,2])
+
+train_index <- sample(c(1:2000),1000)
+train <- df[train_index,]
+test<- df[-train_index,]
+library (e1071)
+ #Linear svm
+tune.out=tune(svm ,y~.,data=train ,kernel ="linear",ranges =list(cost=c(0.001 , 0.01, 0.1, 1,5,10,20,30,40,50,100) ))
+#c(0.001 , 0.01, 0.1, 1,5,10,50,100) )
+bestmod =tune.out$best.model
+summary (bestmod )
+plot(bestmod,train)
+train_pred <- predict(bestmod,train)
+truth <- train$y
+table(train_pred,truth)
+
+test_pred <- predict(bestmod,test)
+truth <- test$y
+table(test_pred,truth)
+
+#polynomial svm
+tune.out=tune(svm ,y~.,data=train ,kernel ="polynomial",ranges =list(cost=c(0.001 , 0.01, 0.1, 1,5,10,20,30,40,50,100) ), degree=2)
+#c(0.001 , 0.01, 0.1, 1,5,10,50,100) )
+bestmod =tune.out$best.model
+summary (bestmod )
+plot(bestmod,train)
+train_pred <- predict(bestmod,train)
+truth <- train$y
+table(train_pred,truth)
+
+test_pred <- predict(bestmod,test)
+truth <- test$y
+table(test_pred,truth)
+```
+\
+The trainig and testing errors are greater than 15% in the the case of a linear svm.\
+
+**Question3**\
+```{r}
+library(RSSL)
+data<-generateCrescentMoon(150,2,1)
+plot(data$X1,data$X2,col=data$Class,asp=1)
+library(stats)
+km <- kmeans(data[,2:3],2,nstart=20)
+summary(km)
+```
+\
+With this dataset, the algorithm gets stuck on a local maxima.
+
+**Question4**\
+a) \
+There is not enough information to tell.\
+
+Single linkage uses the smallest distance between the elements, whereas complete linkage uses the largest.\
+If it happens that these distances are equal, then fusion will occur at the same height. \
+If these distances are not equal, the height of fusion for complete linkage will be higher than the height of fusion for single linkage.\
+
+b)\
+Fusion will occur at the same height for single elements.
+
+
+**Question5**\

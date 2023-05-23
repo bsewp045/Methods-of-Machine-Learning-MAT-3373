@@ -1,0 +1,995 @@
+---
+title: "Long Homework 2"
+author: "Bhavika Sewpal - 300089940"
+date: "4/10/2021"
+output:
+   pdf_document:
+     latex_engine : xelatex
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+**Question 1 - Empirical Study: Cross-Validation Method 1** \
+```{r}
+setwd("C:/Users/mahim/Desktop/winter2021/MAT3373/long_hw2")
+mnist <- read.csv("mnist.csv")
+label <- as.factor(mnist$label)
+
+normalize <- function(x){
+  if (max(x) - min(x) == 0){
+    return (x)
+  }else{
+    return ((x-min(x))/(max(x) - min(x)))
+  }
+}
+
+#normalizing the features
+mnist <- as.data.frame(lapply(mnist[,2:ncol(mnist)],normalize))
+mnist <- cbind(label,mnist)
+
+
+set.seed(100)
+index1 <- sample(c(1:10000),3333)
+fold1 <- mnist[index1,]
+
+mnist2 <- mnist[-index1,]
+set.seed(100)
+index2 <- sample(c(1:6667),3333)
+fold2 <- mnist2[index2,]
+
+fold3 <- mnist2[-index2,]
+
+
+
+#Train on fold1 and fold2, test on fold3
+train1 <- rbind(fold1,fold2)
+train1_features <- train1[,-1]
+train1_target <- train1[,1]
+
+test1 <- fold3
+test1_features <- test1[,-1]
+test1_target <- test1[,1]
+
+library(class)
+knn1 <- knn(train1_features, test1_features, train1_target, k=3)
+table(test1_target,knn1)
+error_rate1 <- mean(knn1 != test1_target)
+error_rate1
+
+#Train on fold1 and fold3, test on fold2
+train2 <- rbind(fold1,fold3)
+train2_features <- train2[,-1]
+train2_target <- train2[,1]
+
+test2 <- fold2
+test2_features <- test2[,-1]
+test2_target <- test2[,1]
+
+knn2 <- knn(train2_features, test2_features, train2_target, k=3)
+table(test2_target,knn2)
+error_rate2 <- mean(knn2 != test2_target)
+error_rate2
+
+#Train on fold2 and fold3, test on fold1
+train3 <- rbind(fold2,fold3)
+train3_features <- train3[,-1]
+train3_target <- train3[,1]
+
+test3 <- fold1
+test3_features <- test3[,-1]
+test3_target <- test3[,1]
+
+knn3 <- knn(train3_features, test3_features, train3_target, k=3)
+table(test3_target,knn3)
+error_rate3 <- mean(knn3 != test3_target)
+error_rate3
+
+average <- (error_rate1 + error_rate2 + error_rate3)/ 3
+average
+```
+\
+The error rate is `r average`.\
+For hw1, the error rate was about 0.18 . \
+The error rate when using cross-validation is much smaller than that without cross-validation.\
+In general, I would have expected the contrary. Since, we are fitting the model on only 2/3 of the data, I would expect the error rate obtained empirically to be an overestimate of the test error. \
+
+**Question 2 - Empirical Study: Cross-Validation Method 2**
+```{r}
+#function to calculate the residual standard error - sigma
+rse <- function(true,pred){
+  sse <- sum((pred-true)^2)
+  mean_sse <- sse / (length(pred))
+}
+
+redwine <- read.csv("redwine.csv",sep= ";")
+set.seed(100)
+test_index <- sample(c(1:1599),799)
+test <- redwine[test_index,]
+train <- redwine[-test_index,]
+ #Linear Regression
+linear_model <- lm(quality~.,data=train)
+summary(linear_model)
+
+pred2 <- predict(linear_model,test)
+testerr <- rse(test$quality,pred2 )
+```
+\
+MSE for linear regression = `r testerr`.
+
+```{r}
+
+
+#Ridge Regression
+library(glmnet)
+x <- model.matrix (quality~.,redwine )[,-1]
+y <- redwine$quality
+x_train <- x[-test_index,]
+y_train <- y[-test_index]
+x_test <- x[test_index,]
+y_test <- y[test_index]
+
+#sequence of lambdas to be tested
+grid =10^ seq (10,-2, length =100)
+
+#find the optimal lambda using cross validation
+ridge_mod =glmnet (x_train,y_train,alpha =0, lambda =grid ,
+thresh =1e-12)
+
+set.seed (100)
+cv_ridge <- cv.glmnet(x_train, y_train, alpha = 0, lambda = grid)
+optimal_lambda <- cv_ridge$lambda.min
+
+#make predictions on the test set
+ridge_pred <- predict(ridge_mod, s = optimal_lambda, newx = x_test)
+testerr2 <- rse(y_test,ridge_pred)
+
+out=glmnet (x_train,y_train,alpha =0)
+predict (out ,type="coefficients",s=optimal_lambda )
+
+```
+\
+Optimal value of lambda for ridge regression = `r optimal_lambda`.\
+The MSE is `r testerr2`.\
+
+
+```{r}
+
+#Lasso Regression
+
+#find the optimal lambda using cross validation
+lasso_mod =glmnet (x_train,y_train,alpha =1, lambda =grid)
+
+set.seed (100)
+cv_lasso <- cv.glmnet(x_train, y_train, alpha = 1, lambda = grid)
+optimal_lambda <- cv_lasso$lambda.min
+optimal_lambda
+
+#make predictions on the test set
+lasso_pred <- predict(lasso_mod, s = optimal_lambda, newx = x_test)
+testerr3 <- rse(y_test,lasso_pred)
+testerr3
+
+out=glmnet (x_train,y_train,alpha =1)
+predict (out ,type="coefficients",s=optimal_lambda )
+```
+
+Optimal value of lambda for lasso regression = `r optimal_lambda`.\
+The MSE is `r testerr3`.\
+
+
+```{r}
+
+#Select best linear model using forward stepwise regression
+library (leaps)
+set.seed(100)
+test_index <- sample(c(1:1599),799)
+test <- redwine[test_index,]
+train <- redwine[-test_index,]
+regfit_fwd=regsubsets(quality~.,data=train,method="forward",nvmax=12)
+summary(regfit_fwd)
+test_mat=model.matrix(quality~.,data=test)
+val_errors =rep(NA,11)
+
+for(i in 1:11){
+  # Find the coefficients selected in the models of different sizes
+  coefi=coef(regfit_fwd ,id=i)
+  #predict the test values
+  pred=test_mat[,names(coefi)]%*%coefi
+  #calculate the errors
+  val_errors[i]= mean(( test$quality-pred)^2)
+}
+# number of variables selected
+best_model = which.min(val_errors)
+best_model
+testerr_fwd = val_errors[best_model]
+# 7 variables selected over the test set
+coef(regfit_fwd,best_model)
+
+```
+The MSE is `r testerr_fwd`.\
+
+```{r}
+#Select best linear model using backward stepwise regression
+set.seed(100)
+test_index <- sample(c(1:1599),799)
+test <- redwine[test_index,]
+train <- redwine[-test_index,]
+regfit_bwd=regsubsets(quality~.,data=train,method="backward",nvmax=12)
+summary(regfit_bwd)
+test_mat=model.matrix(quality~.,data=test)
+val_errors =rep(NA,11)
+
+for(i in 1:11){
+  # Find the coefficients selected in the models of different sizes
+  coefi=coef(regfit_bwd ,id=i)
+  #predict the test values
+  pred=test_mat[,names(coefi)]%*%coefi
+  #calculate the errors
+  val_errors[i]= mean((test$quality-pred)^2)
+}
+
+best_model = which.min(val_errors)
+best_model
+testerr_bwd = val_errors[best_model]
+# 7 variables selected over the test set
+
+coef(regfit_bwd,best_model)
+```
+The MSE is `r testerr_bwd`.\
+
+The test error for all the models are about 0.41.\
+It appears that the probability that we will correctly predict wine quality is about 0.6.\
+The same 7 predictors are chosen for lasso,forward and backward regression: volatile acidity, chlorides, free sulfur dioxide, total sulfur dioxide, pH, suplphates and alcohol.\
+With linear regression, we find 6 variables to be significant : the same as above except free sulfur dioxide.\
+With ridge regression, all variables are used.\
+All things considered, we can say that all  models (except the ridge model) are fairly similar.\
+
+**Question 3 - Simulation Study: Cross Validation Method**
+```{r}
+set.seed(100)
+x=rnorm(100)
+y=x-2*x^2+rnorm(100)
+```
+\
+n = 100.\
+$y = (x-2)x^2 + \epsilon $\
+$y = x^3 -2x^2 + \epsilon$ where $\epsilon \sim N(0,1)$
+p =2\
+
+```{r}
+plot(x,y)
+```
+\
+There appears to be a non linear (quadratic relationship) between x and y.
+
+```{r}
+library(boot)
+
+
+set.seed(100)
+x=rnorm(100)
+y=x-2*x^2+rnorm(100)
+simulated <- data.frame(x,y)
+
+cv_error=rep (0,5)
+for (i in 1:5){
+  glm_fit=glm(y~poly(x ,i),data=simulated)
+  cv_error[i]=cv.glm(simulated,glm_fit)$delta [1]
+}
+cv_error
+
+index <- which.min(cv_error)
+min_error1 <- cv_error[index]
+```
+\
+The quadratic model has the smallest LOOCV error : `r min_error1`.\
+```{r}
+set.seed(205)
+x=rnorm(100)
+y=x-2*x^2+rnorm(100)
+plot(x,y)
+simulated <- data.frame(x,y)
+cv_error=rep (0,5)
+for (i in 1:5){
+  glm_fit=glm(y~poly(x ,i),data=simulated)
+  cv_error[i]=cv.glm(simulated,glm_fit)$delta [1]
+}
+cv_error
+
+index <- which.min(cv_error)
+min_error2 <- cv_error[index]
+
+```
+\
+Again, the quadratic model has the smallest LOOCV error : `r min_error2`.\
+This is because the scatterplot in both cases is best approximated by a quadratic curve. (even if the true function is cubic).\
+However even if the quadratic model has the smallest error in both cases, the LOOCV error for the second experiment is larger.\
+I expected the models to have different errors because each time, the values of x and y will change depending on the seed we set.\
+
+```{r}
+set.seed(100)
+x=rnorm(100)
+y=x-2*x^2+rnorm(100)
+simulated <- data.frame(x,y)
+
+fit1=glm(y~poly(x ,1),data=simulated)
+summary(fit1)
+fit2=glm(y~poly(x ,2),data=simulated)
+summary(fit2)
+fit3=glm(y~poly(x ,3),data=simulated)
+summary(fit3)
+fit4=glm(y~poly(x ,4),data=simulated)
+summary(fit4)
+```
+\
+As illustrated by the summaries, the AIC value for the quadratic model is the smallest (as suggested by the cross-validation method).\
+For the linear model, the coefficien for $\beta_1$ is not significant.\
+For the quadratic model, both $\beta_1$ and $\beta_2$ are significant.\
+For the cubic model, both $\beta_1$ and $\beta_2$ are significant but $\beta_3$ is not.\
+For the quartic model, $\beta_1$ and $\beta_2$ are significant but $\beta_3$ and $\beta_4$ are not.\
+These observations agree with the results of the LOOCV, which selected the quadratic model.\
+
+**Question 4 - Simulation Study: Screening, Stepwise Selection and ROC Curves**
+
+```{r}
+gwas <- read.csv("GWAS.CSV")
+gwas <- gwas[,-1]
+#Convert all the columns to factors except V1
+set.seed(100)
+train_index <- sample( c(1:3000), 1500)
+train <- gwas[train_index,]
+test <- gwas[-train_index,]
+logistic <- glm(V1~.,data=train,family="binomial")
+#Significant attributes
+significant <- summary(logistic)$coef[,4][summary(logistic)$coef[,4] < 0.05]
+prob <- predict(logistic,test,type="response")
+pred <- ifelse(prob >= 0.5, 1, 0)
+library(caret)
+confusionMatrix(as.factor(pred),as.factor(test$V1))
+
+```
+/
+On test data set, the model predicts correctly 56% of the time./
+It is not a good model./
+
+```{r}
+#Ridge Regression
+library(glmnet)
+x <- model.matrix (V1~.,train )[,-1]
+y <- train$V1
+x_test<- model.matrix (V1~.,test )[,-1]
+y_test <- test$V1
+
+
+#sequence of lambdas to be tested
+grid =10^ seq (10,-2, length =100)
+
+#find the optimal lambda using cross validation
+
+
+set.seed (100)
+cv_ridge <- cv.glmnet(x, y, alpha = 0, lambda = grid,family="binomial")
+optimal_lambda <- cv_ridge$lambda.min
+
+#make predictions on the test set
+ridge_prob<- predict(cv_ridge, s = optimal_lambda, newx = x_test,type="response")
+ridge_pred <- ifelse(ridge_prob >= 0.5, 1, 0)
+confusionMatrix(as.factor(y), as.factor(ridge_pred))
+```
+\
+The ridge logistic regression model is 64.4% accurate.
+```{r}
+#Lasso Regression
+
+#find the optimal lambda using cross validation
+set.seed (100)
+cv_lasso <- cv.glmnet(x, y, alpha = 1, lambda = grid,family="binomial")
+optimal_lambda <- cv_lasso$lambda.min
+
+#make predictions on the test set
+lasso_prob<- predict(cv_lasso, s = optimal_lambda, newx = x_test,type="response")
+lasso_pred <- ifelse(lasso_prob >= 0.5, 1, 0)
+table(lasso_pred,y)
+mean(lasso_pred==y)
+
+```
+\
+The lasso logistic regression model is 64.27 % accurate but it classifies all the test data as 0.\
+Summary:\
+Model          Accuracy\
+Logistic       56%\
+Ridge Logistic 64.4%\
+Lasso Logistic 64.3%\
+
+It appears that the penalised logistic regression models (Lasso and Ridge) work better than the traditional logistic regression model.\
+
+```{r}
+library(pROC)
+
+par(pty ="s")
+#plot ROC curve for ridge logistic regression
+roc_info_ridge <-  roc(response=test$V1, predictor=ridge_prob , plot= TRUE, legacy.axes=TRUE,col="red")
+
+#plot ROC curve for lasso logistic regression
+roc_info_lasso <-  roc(response=test$V1, predictor=lasso_prob , plot= TRUE, legacy.axes=TRUE,col="red")
+
+roc.df <- data.frame(tpp=roc_info_lasso$sensitivities*100,
+fpp=(1-roc_info_lasso$specificities)*100,thresholds=roc_info_lasso$thresholds)
+
+
+threshold <- seq(0,1,by=0.001)
+accuracy <- rep(0,length(threshold))
+for(i in 1:length(threshold)){
+  lasso_new_pred <- ifelse(lasso_prob >= threshold[i], 1, 0)
+  accuracy[i] <- mean(lasso_new_pred==y)
+  
+}
+index <- which.max(accuracy)
+accuracy[index]
+threshold[index]
+
+```
+\
+It seems that for a threshold above or equal to `r threshold[index]`, the highest accuracy = `r accuracy[index]` remains constant.\
+This is because the lasso model at a threshold of `r threshold[index]` classfies all observations as 0. Thus, increasing the threshold above 0.50 does not change the accuracy but decreasing the threshold leads to a decrease in accuracy.
+
+```{r}
+library(coefplot)
+extract.coef(cv.glmnet(x, y, alpha = 1, lambda = grid,family="binomial"))
+```
+\
+Decision procedure:\
+Collect data about alleles V65, V80, V300, V316, V337 and V408 for the population.\
+We choose these alleles because these are the only variables that have non zero coefficients in the lasso model.\
+We predict the chances of having the disease using the lasso model.\
+We want the number of false negatives to be as small as possible (as we don't want a patient having the disease to be classified as not having the disease)\
+One course of action would be to establish an accepted level of false negatives and try to reduce the number of false positives (i.e aim for a high sensibility), by choosing an appropriate threshold based on the ROC graph.\
+We then send these people for screening\
+
+**Question 7 - Empirical Study: LASSO vs. Regression Workflow**
+```{r}
+train <- read.csv("ListingsTrain.csv")
+
+
+#Cleaning up for train dataset
+
+#Removing columns neighbourhood_group_cleansed and bathroom (contain only NAs)
+train <- train[,c(-13,-19)]
+
+#Converting categorical variables (true/false) to 0 and 1.
+train$host_is_superhost <- factor(train$host_is_superhost, levels = c("t","f"), labels=c(1,0))
+
+train$host_has_profile_pic <- factor(train$host_has_profile_pic, levels = c("t","f"), labels=c(1,0))
+train$host_identity_verified <- factor(train$host_identity_verified, levels = c("t","f"), labels=c(1,0))
+train$has_availability<- factor(train$has_availability, levels = c("t","f"), labels=c(1,0))
+train$instant_bookable <- factor(train$instant_bookable, levels = c("t","f"), labels=c(1,0))
+
+#Remove 72 rows
+index <- is.na(train$review_scores_checkin)
+train <- train[(!index),]
+
+#Remove dollar sign from price column
+train$price = as.numeric(gsub("\\$", "", train$price))
+#find out the NAs in price column and replace them with the average value of price
+index1 <- which(is.na(train$price))
+median_price <- 89
+train[index1,21] = median_price
+
+
+#Remove percentage sign in host_response_rate column
+train$host_response_rate = as.numeric(gsub("\\%", "", train$host_response_rate))
+
+#find out the NAs in the response rate column and replace them with the average value of response rate
+index2 <- which(is.na(train$host_response_rate))
+avg_response <- 92.5 
+train[index2,4] = avg_response
+
+#Remove percentage sign in host_acceptance_rate column
+train$host_acceptance_rate = as.numeric(gsub("\\%", "", train$host_acceptance_rate))
+
+#find out the NAs in the acceptance rate column and replace them with the average value of acceptance rate
+index3 <- which(is.na(train$host_acceptance_rate))
+avg_acceptance <- 76.87
+train[index3,5] = avg_acceptance
+
+
+#Replace missing values in host_response_time with more frequent category:within an hour
+index4 <- which((train$host_response_time=="N/A"))
+train[index4,3] <- "within an hour"
+
+index5 <- which(is.na(train$bedrooms))
+avg_bedrooms <- 1.7
+train[index5,18] <- 1.7
+
+#Converting to categorical variables to factors
+train$room_type <- factor(train$room_type)
+train$host_response_time <- factor(train$host_response_time)
+train$host_neighbourhood<- factor(train$host_neighbourhood)
+train$neighbourhood_cleansed<- factor(train$neighbourhood_cleansed)
+train$property_type <- factor(train$property_type)
+
+summary(train)
+
+```
+
+
+```{r}
+#Cleaning up optimization dataset
+#Removing columns neighbourhood_group_cleansed and bathroom (contain only NAs)
+opt <- read.csv("ListingsOptimization.csv")
+opt <- opt[,c(-13,-19)]
+
+#Converting categorical variables (true/false) to 0 and 1.
+opt$host_is_superhost <- factor(opt$host_is_superhost, levels = c("t","f"), labels=c(1,0))
+
+opt$host_has_profile_pic <- factor(opt$host_has_profile_pic, levels = c("t","f"), labels=c(1,0))
+opt$host_identity_verified <- factor(opt$host_identity_verified, levels = c("t","f"), labels=c(1,0))
+opt$has_availability<- factor(opt$has_availability, levels = c("t","f"), labels=c(1,0))
+opt$instant_bookable <- factor(opt$instant_bookable, levels = c("t","f"), labels=c(1,0))
+
+#Remove 72 rows
+index <- is.na(opt$review_scores_checkin)
+opt <- opt[(!index),]
+
+#Remove dollar sign from price column
+opt$price = as.numeric(gsub("\\$", "", opt$price))
+#find out the NAs in price column and replace them with the average value of price
+index1 <- which(is.na(opt$price))
+median_price <- 80
+opt[index1,21] <- median_price
+
+
+#Remove percentage sign in host_response_rate column
+opt$host_response_rate = as.numeric(gsub("\\%", "", opt$host_response_rate))
+
+#find out the NAs in the response rate column and replace them with the average value of response rate
+index2 <- which(is.na(opt$host_response_rate))
+avg_response <- 92.76
+opt[index2,4] <- avg_response
+
+#Remove percentage sign in host_acceptance_rate column
+opt$host_acceptance_rate = as.numeric(gsub("\\%", "", opt$host_acceptance_rate))
+
+#find out the NAs in the acceptance rate column and replace them with the average value of acceptance rate
+index3 <- which(is.na(opt$host_acceptance_rate))
+avg_acceptance <- 82.98
+opt[index3,5] <- avg_acceptance
+
+
+#Replace missing values in host_response_time with more frequent category:within an hour
+index4 <- which((opt$host_response_time=="N/A"))
+opt[index4,3] <-"within an hour"
+
+#Converting to categorical variables to factors
+opt$room_type <- factor(opt$room_type)
+opt$host_response_time <- factor(opt$host_response_time)
+opt$host_neighbourhood<- factor(opt$host_neighbourhood)
+opt$neighbourhood_cleansed<- factor(opt$neighbourhood_cleansed)
+opt$property_type <- factor(opt$property_type)
+
+#dealing with NAs
+index5 <- which(is.na(opt$host_is_superhost))
+opt[index5,6] = 0
+
+index6 <- which(is.na(opt$host_listings_count))
+opt[index6,8] = 2
+
+index7 <- which(is.na(opt$host_total_listings_count))
+opt[index7,9] = 2
+
+index8 <- which(is.na(opt$host_has_profile_pic))
+opt[index8,10] = 1
+
+
+index9<- which(is.na(opt$host_identity_verified))
+opt[index9,11] = 1
+
+index10 <- which(is.na(opt$bedrooms))
+opt[index10,18] = 1
+
+summary(opt)
+
+```
+
+```{r}
+#Cleaning up for test dataset
+
+#Removing columns neighbourhood_group_cleansed and bathroom (contain only NAs)
+test <- read.csv("ListingsTest.csv")
+test <- test[,c(-13,-19)]
+
+#Converting categorical variables (true/false) to 0 and 1.
+test$host_is_superhost <- factor(test$host_is_superhost, levels = c("t","f"), labels=c(1,0))
+
+test$host_has_profile_pic <- factor(test$host_has_profile_pic, levels = c("t","f"), labels=c(1,0))
+test$host_identity_verified <- factor(test$host_identity_verified, levels = c("t","f"), labels=c(1,0))
+test$has_availability<- factor(test$has_availability, levels = c("t","f"), labels=c(1,0))
+test$instant_bookable <- factor(test$instant_bookable, levels = c("t","f"), labels=c(1,0))
+
+#Remove 400 rows
+index <- is.na(test$review_scores_checkin)
+test <- test[(!index),]
+
+#Remove dollar sign from price column
+test$price = as.numeric(gsub("\\$", "", test$price))
+#find out the NAs in price column and replace them with the average value of price
+index1 <- which(is.na(test$price))
+median_price <- 80
+test[index1,21] <- median_price
+
+
+#Remove percentage sign in host_response_rate column
+test$host_response_rate = as.numeric(gsub("\\%", "", test$host_response_rate))
+
+#find out the NAs in the response rate column and replace them with the average value of response rate
+index2 <- which(is.na(test$host_response_rate))
+avg_response <- 94.34 
+test[index2,4] <- avg_response
+
+#Remove percentage sign in host_acceptance_rate column
+test$host_acceptance_rate = as.numeric(gsub("\\%", "", test$host_acceptance_rate))
+
+#find out the NAs in the acceptance rate column and replace them with the average value of acceptance rate
+index3 <- which(is.na(test$host_acceptance_rate))
+avg_acceptance <- 88.18
+test[index3,5] <- avg_acceptance
+
+
+#Replace missing values in host_response_time with more frequent category:within an hour
+index4 <- which((test$host_response_time=="N/A"))
+test[index4,3] <- "within an hour"
+
+#Converting to categorical variables to factors
+test$room_type <- factor(test$room_type)
+test$host_response_time <- factor(test$host_response_time)
+test$host_neighbourhood<- factor(test$host_neighbourhood)
+test$neighbourhood_cleansed<- factor(test$neighbourhood_cleansed)
+test$property_type <- factor(test$property_type)
+
+index5 <- which(is.na(test$bedrooms))
+test[index5,18] = 1
+
+index6 <- which(is.na(test$beds))
+test[index6,19] = 1
+summary(test)
+
+```
+
+
+\
+The variables neighbourhood_group_cleansed and bathrooms are useless. They contain NAs only.
+
+```{r}
+# Regression with suspicious points
+library(glmnet)
+
+#select the best lambda with cross validation
+grid =10^ seq (10,-2, length =100)
+
+mse <- function(true,pred){
+  sse <- mean((pred-true)^2)
+}
+
+selected_opt <- opt[, c(-1,-2,-7,-15,-16,-20,-28,-29)]
+x_opt<- model.matrix(price~.,selected_opt)[,-1]
+y_opt <- selected_opt$price
+
+selected_train <- train[, c(-1,-2,-7,-15,-16,-20,-28,-29)]
+x_train<- model.matrix(price~.,selected_train)[,-1]
+y_train <- selected_train$price
+
+selected_test <- test[, c(-1,-2,-7,-15,-16,-20,-28,-29)]
+x_test<- model.matrix(price~.,selected_test)[,-1]
+y_test <- selected_test$price
+
+
+
+
+set.seed (100)
+cv_lasso <- cv.glmnet(x_opt, y_opt, alpha = 1, lambda = grid)
+optimal_lambda <- cv_lasso$lambda.min
+optimal_lambda
+ #train the model
+lasso_mod =glmnet(x_train,y_train,alpha =1, lambda =optimal_lambda)
+summary(lasso_mod)
+
+#make predictions on the test set
+lasso_pred <- predict(lasso_mod, s = optimal_lambda, newx = x_test)
+lasso_coef <- predict(lasso_mod,s=optimal_lambda,type="coefficients")
+lasso_coef
+testerr <- mse(y_test,lasso_pred)
+testerr
+
+#normal regression on dataset
+mod <- lm(price~.,data=selected_train)
+summary(mod)
+reg_pred <- predict(mod,selected_test)
+testerr2 <- mse(selected_test$price,reg_pred)
+testerr2
+
+
+
+```
+
+
+```{r}
+#Regression without suspicious points
+#Removing suspicious values
+train_new <- train
+
+i1 <- which(train_new$host_listings_count  > 200)
+train_new <- train_new[-i1,]
+
+i2 <- which(train_new$price > 9000)
+train_new <- train_new[-i2,]
+
+i3 <- which(train_new$beds > 8)
+train_new <- train_new[-i3,]
+
+i4 <- which(train_new$number_of_reviews > 500)
+train_new <- train_new[-i4,]
+
+i5 <- which(train_new$maximum_nights> 3000)
+train_new <- train_new[-i5,]
+
+i6 <- which(train_new$number_of_reviews_ltm > 100)
+train_new <- train_new[-i6,]
+
+i7 <- which(train_new$number_of_reviews_l30d > 4)
+train_new <- train_new[-i7,]
+
+i8 <- which(train_new$room_type=="Hotel room")
+train_new <- train_new[-i8,]
+train_new$room_type <- factor(train_new$room_type)
+
+#normal regression
+
+selected_train2 <- train_new[,c(-1,-2,-7,-15,-20,-28,-29)]
+selected_test2 <- test[,c(-1,-2,-7,-15,-20,-28,-29)]
+mod2 <- lm(price~.,data=selected_train2)
+reg_pred2 <- predict(mod2,selected_test2)
+testerr3 <- mse(selected_test2$price,reg_pred2)
+testerr3
+
+
+#lasso regression
+x_train2<- model.matrix(price~.,selected_train2)[,-1]
+y_train2 <- selected_train2$price
+
+x_test2<- model.matrix(price~.,selected_test2)[,-1]
+y_test2 <- selected_test2$price
+
+#make predictions on the test set
+lasso_mod2 =glmnet(x_train2,y_train2,alpha =1, lambda =optimal_lambda)
+lasso_pred2 <- predict(lasso_mod2, s = optimal_lambda, newx = x_test2)
+lasso_coef2 <- predict(lasso_mod2,s=optimal_lambda,type="coefficients")
+lasso_coef2
+testerr4 <- mse(y_test2,lasso_pred2)
+testerr4
+
+testerr;testerr2;testerr3;testerr4
+```
+\
+Without removing susicious points:\
+The test error for standard regression is `r testerr2`.\
+The test error for Lasso regression is `r testerr`.\
+
+Removed suspicious points:\
+The test error for standad regression is `r testerr3`.\
+The test error for Lasso regression is `r testerr4`.\
+
+In both cases, the test error for Lasso Regression is smaller than the test error for standard regression. But the test errors for the models containing the suspicious points are smaller than the corresponding test errors for the models in which the suspicious points have been removed.\
+
+It appears that  lasso regression for the model containing the suspicious points is the best model.\
+
+It appears that removing the data points caused the sample size to decrease and thus might have inadvertently led to an increase in the test error rate.\
+
+
+
+```{r}
+
+
+text <- rep("",928)
+for(i in 1:928){
+  text[i] <- paste(train$description[i],train$neighborhood_overview[i],train$amenities[i],sep="")
+}
+n = length(text)
+n
+w1 <- grepl("bedroom", text, ignore.case = TRUE)
+table(w1)/n
+w2 <- grepl("Wifi", text, ignore.case = TRUE)
+table(w2)/n
+w3<- grepl("heating", text, ignore.case = TRUE)
+table(w3)/n
+w4 <- grepl("walk", text, ignore.case = TRUE)
+table(w4)/n
+w5 <- grepl("university", text, ignore.case = TRUE)
+table(w5)/n
+w6 <- grepl("Refrigerator", text, ignore.case = TRUE)
+table(w6)/n
+w7 <- grepl("downtown", text, ignore.case = TRUE)
+table(w7)/n
+w8 <- grepl("parking", text, ignore.case = TRUE)
+table(w8)/n
+w9 <- grepl("water", text, ignore.case = TRUE)
+table(w9)/n
+w10 <- grepl("alarm", text, ignore.case = TRUE)
+table(w10)/n
+w11 <- grepl("bus",text,ignore.case = TRUE)
+table(w11)/n
+w12 <- grepl("quiet",text,ignore.case = TRUE)
+table(w11)/n
+
+bedroom <- ifelse(w1,1,0)
+wifi <- ifelse(w2,1,0)
+heating <- ifelse(w3,1,0)
+walk <- ifelse(w4,1,0)
+university <- ifelse(w5,1,0)
+refrigerator <- ifelse(w6,1,0)
+downtown <- ifelse(w7,1,0)
+parking <- ifelse(w8,1,0)
+water <- ifelse(w9,1,0)
+alarm <- ifelse(w10,1,0)
+bus <- ifelse(w11,1,0)
+quiet <- ifelse(w12,1,0)
+
+train$bedroom <- bedroom
+train$wifi <- wifi
+train$heating <- heating
+train$walk <- walk
+train$university <- university
+train$refrigerator <- refrigerator
+train$downtown <- downtown
+train$parking <- parking
+train$water <- water
+train$alarm <- alarm
+train$bus <- bus
+train$quiet <- quiet
+```
+\
+We choose the above 12 words.\
+Each p(w) is obtained in the tables (in the column TRUE).\
+
+```{r}
+
+#modify the test dataset
+texttest <- rep("",404)
+for(i in 1:404){
+  texttest[i] <- paste(test$description[i],test$neighborhood_overview[i],test$amenities[i],sep="")
+}
+
+w11 <- grepl("bedroom", texttest, ignore.case = TRUE)
+w22 <- grepl("Wifi", texttest, ignore.case = TRUE)
+w33<- grepl("heating", texttest, ignore.case = TRUE)
+w44 <- grepl("walk", texttest, ignore.case = TRUE)
+w55 <- grepl("university", texttest, ignore.case = TRUE)
+w66 <- grepl("Refrigerator", texttest, ignore.case = TRUE)
+w77 <- grepl("downtown", texttest, ignore.case = TRUE)
+w88 <- grepl("parking", texttest, ignore.case = TRUE)
+w99 <- grepl("water", texttest, ignore.case = TRUE)
+w100 <- grepl("alarm", texttest, ignore.case = TRUE)
+w111 <- grepl("bus",texttest,ignore.case = TRUE)
+w122 <- grepl("quiet",texttest,ignore.case = TRUE)
+
+bedroom <- ifelse(w11,1,0)
+wifi <- ifelse(w22,1,0)
+heating <- ifelse(w33,1,0)
+walk <- ifelse(w44,1,0)
+university <- ifelse(w55,1,0)
+refrigerator <- ifelse(w66,1,0)
+downtown <- ifelse(w77,1,0)
+parking <- ifelse(w88,1,0)
+water <- ifelse(w99,1,0)
+alarm <- ifelse(w100,1,0)
+bus <- ifelse(w111,1,0)
+quiet <- ifelse(w122,1,0)
+
+test$bedroom <- bedroom
+test$wifi <- wifi
+test$heating <- heating
+test$walk <- walk
+test$university <- university
+test$refrigerator <- refrigerator
+test$downtown <- downtown
+test$parking <- parking
+test$water <- water
+test$alarm <- alarm
+test$bus <- bus
+test$quiet <- quiet
+#modify the optimization dataset
+
+textopt <- rep("",848)
+for(i in 1:848){
+  textopt[i] <- paste(opt$description[i],opt$neighborhood_overview[i],opt$amenities[i],sep="")
+}
+
+o1 <- grepl("bedroom", textopt, ignore.case = TRUE)
+o2 <- grepl("Wifi", textopt, ignore.case = TRUE)
+o3<- grepl("heating", textopt, ignore.case = TRUE)
+o4 <- grepl("walk", textopt, ignore.case = TRUE)
+o5 <- grepl("university", textopt, ignore.case = TRUE)
+o6 <- grepl("Refrigerator", textopt, ignore.case = TRUE)
+o7 <- grepl("downtown", textopt, ignore.case = TRUE)
+o8 <- grepl("parking", textopt, ignore.case = TRUE)
+o9 <- grepl("water", textopt, ignore.case = TRUE)
+o10 <- grepl("alarm", textopt, ignore.case = TRUE)
+o11 <- grepl("bus",textopt,ignore.case = TRUE)
+o12 <- grepl("quiet",textopt,ignore.case = TRUE)
+
+bedroom <- ifelse(o1,1,0)
+wifi <- ifelse(o2,1,0)
+heating <- ifelse(o3,1,0)
+walk <- ifelse(o4,1,0)
+university <- ifelse(o5,1,0)
+refrigerator <- ifelse(o6,1,0)
+downtown <- ifelse(o7,1,0)
+parking <- ifelse(o8,1,0)
+water <- ifelse(o9,1,0)
+alarm <- ifelse(o10,1,0)
+bus <- ifelse(o11,1,0)
+quiet <- ifelse(o12,1,0)
+
+opt$bedroom <- bedroom
+opt$wifi <- wifi
+opt$heating <- heating
+opt$walk <- walk
+opt$university <- university
+opt$refrigerator <- refrigerator
+opt$downtown <- downtown
+opt$parking <- parking
+opt$water <- water
+opt$alarm <- alarm
+opt$bus <- bus
+opt$quiet <- quiet
+
+#standard regression model 
+selected_train <- train[, c(-1,-2,-7,-15,-16,-20,-28,-29)]
+x_train<- model.matrix(price~.,selected_train)[,-1]
+y_train <- selected_train$price
+
+selected_test <- test[, c(-1,-2,-7,-15,-16,-20,-28,-29)]
+x_test<- model.matrix(price~.,selected_test)[,-1]
+y_test <- selected_test$price
+
+selected_opt <- opt[, c(-1,-2,-7,-15,-16,-20,-28,-29)]
+x_opt<- model.matrix(price~.,selected_opt)[,-1]
+y_opt <- selected_opt$price
+
+
+#Find the new lambda
+set.seed (100)
+las <- cv.glmnet(x_opt, y_opt, alpha = 1, lambda = grid)
+optimal <- las$lambda.min
+optimal
+ #train the model
+lassomod =glmnet(x_train,y_train,alpha =1, lambda =optimal)
+summary(lassomod)
+
+#make predictions on the test set
+lasso_pred <- predict(lassomod, s = optimal, newx = x_test)
+lasso_coef <- predict(lassomod,s=optimal,type="coefficients")
+lasso_coef
+test_error2 <- mse(y_test,lasso_pred)
+test_error2
+
+
+
+#Standard regression
+mod3 <- lm(price~.,data=selected_train)
+summary(mod3)
+
+
+reg_pred3 <- predict(mod3,selected_test)
+test_error <- mse(selected_test$price,reg_pred3)
+test_error
+```
+
+\
+The test error for lasso regression is `r test_error2`.It is higher than the test error for lasso regression with suspicious points.\
+As expected, the test error for the standard regression (`r test_error`) is higher than that for lasso but it is also higher than the test error for standard regression with suspicious points\
+The new variables added to the model didn't improve the model.\
+
+ 
+
+

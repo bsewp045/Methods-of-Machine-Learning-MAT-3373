@@ -1,0 +1,159 @@
+---
+title: "Short HW 1"
+author: "Bhavika Sewpal - 300089940 "
+output:
+  pdf_document:
+     latex_engine: xelatex
+---
+
+**Part 1**
+
+**1)**
+
+$H_{0}$ = IQ has no effect on diligence\
+$H_{1}$ = IQ has an effect on diligence
+
+**2)**
+
+```{r}
+schoolA <- read.csv("SchoolA.csv")
+y <- schoolA$V2
+x <- schoolA$V1
+fit <- lm(y~x)
+summary(fit)
+```
+
+Since the p-value is less than 0.05, we reject the null hypothesis.
+(i.e. we conclude that IQ has an effect on diligence)
+
+**3)**
+
+```{r}
+residuals = fit$residuals
+plot(density(residuals) , main = "Density of residuals for School A")
+
+library("car")
+qqPlot(residuals , main = "Q-Q Plot of residuals for School A")
+
+```
+
+It seems that the residuals are skewed to the left according to the density plot.\
+On the qqplot, the residuals don't fall on a straight line.\
+All these observations indicate that the residuals are not Gaussian
+
+**Part 2**\
+
+**1)**
+
+```{r}
+schoolB <- read.csv("SchoolB.csv")
+y2 <- schoolB$V2
+x2 <- schoolB$V1
+fit2 <- lm(y2 ~ x2)
+summary(fit2)
+```
+Since the p-value is less than 0.05, we reject the null hypothesis.
+(i.e. we conclude that IQ has an effect on diligence)
+
+```{r}
+residuals2 = fit2$residuals
+plot(density(residuals2), main = "Density of residuals for School B")
+
+library("car")
+qqPlot(residuals2, main = "Q-Q plot of residuals for School B")
+
+```
+The density plot for the residuals is not bell-shaped. Instead, it is very wide.\
+The residuals don't fall on a straight line on the qqplot.\
+From these observations, we can conclude that the residuals are not Gaussian.
+
+
+```{r}
+
+schoolC <- read.csv("SchoolC.csv")
+y3 <- schoolC$V2
+x3 <- schoolC$V1
+fit3 <- lm(y3 ~ x3)
+summary(fit3)
+```
+
+Since the p-value is less than 0.05, we reject the null hypothesis.
+(i.e. we conclude that IQ has an effect on diligence)
+
+```{r}
+residuals3 = fit3$residuals
+plot(density(residuals3), main = "Density of residuals for School C")
+
+library("car")
+qqPlot(residuals3)
+
+```
+The density plot for the residuals is skewed to the right.\
+The residuals don't fall on a straight line on the qqplot.\
+From these observations, we can conclude that the residuals are not Gaussian.\
+
+**2)** 
+
+Since the p-values for all the the three studies is smaller than 0.05, we can reject the null hypothesis for all of them. Hence, it seems that IQ has an effect on diligence for all three studies.
+
+**Part 3**
+
+**1)**
+
+A 100 (1−α) percent confidence interval on $\beta_{1}$ is obtained as follows:
+
+$$\hat {\beta_{1}} \pm t_{\alpha/2 , n-2} se(\hat{\beta_{1}}) $$
+where the standard error of $\hat{\beta_{1}}$ is given by:
+$$se(\hat{\beta_{1}}) = \frac {\sqrt {(y_{i} - \hat{y_{i}})^2}} {\sqrt{ (x_{i} - \bar{x})^2} (n - 2)} $$
+When we combine independent datasets, the number of observation,n, increases.\
+$\frac {\sqrt {(y_{i} - \hat{y_{i}})^2}} {n -2}$ converges to ${\sigma^2}$ as n gets bigger.\
+The denominator $\sqrt{ (x_{i} - \bar{x})^2}$ gets bigger as n increases.\
+Hence, the standard error of $\hat{\beta_{1}}$ decreases as n gets bigger, leading to smaller confidence intervals.
+
+**2)**
+```{r}
+merged_data <- rbind(schoolA, schoolB, schoolC)
+y4 <- merged_data$V2
+x4 <- merged_data$V1
+fit4 <- lm(y4~x4)
+summary(fit4)
+```
+
+For the merged dataset, the p-value is greater than 0.05. The null hypothesis is not rejected. i.e., we conclude that IQ has no effect on diligence.\
+
+```{r}
+residuals4 = fit4$residuals
+plot(density(residuals4), main = "Density of residuals for merged dataset")
+
+library("car")
+qqPlot(residuals4)
+```
+
+The density plot for the residuals seems symmetric and bell-shaped.\
+The qqplot for the residuals fall on a straight line.\
+From these observations, the residuals appear Gaussian.\
+
+The results for Part 3 do not agree with those from Part1 and Part2
+
+**3)**
+
+```{r}
+with(schoolA, plot(V1,V2, xlab = "iq" , ylab = "diligence", main = "Scatterplot for school A"))
+abline(fit, col="red")
+with(schoolB, plot(V1,V2, xlab = "iq" , ylab = "diligence", main = "Scatterplot for school B"))
+abline(fit2, col = "red")
+with(schoolC, plot(V1,V2, xlab = "iq" , ylab = "diligence", main = "Scatterplot for school C"))
+abline(fit3, col = "red")
+with(merged_data, plot(V1,V2, xlab = "iq" , ylab = "diligence", main = "Scatterplot for merged data"))
+abline(fit4, col="red")
+```
+
+From the scatterplots, we can see that for school A, school B and school C, best fit lines with negative slopes are obtained, suggesting that as iq increases, diligence decreases.(explaining why we got a p-value smaller than 0.05 for Part 1 and Part 2)\
+
+On the scatterplot of the merged dataset, we get a best fit line with a slope of 0. This means that iq has no effect on diligence, explaining why we got a p-value greater than 0.05 for Part 3.
+
+This is most likely due to the fact that the datasets for A, B and C are not independent. In fact, from the scatterplots, it appears that the datasets for A,B and C are distinct and non-overlapping.
+
+
+
+
